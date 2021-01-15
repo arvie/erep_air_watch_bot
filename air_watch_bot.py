@@ -40,7 +40,7 @@ def stop(update: Update, context: CallbackContext) -> None:
         del chats[chat_id]
 
 
-def help(update: Update, context: CallbackContext) -> None:
+def helpme(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Hi! /start, /stop, /help and /list are supported. Try it...')
 
 
@@ -137,7 +137,7 @@ def main() -> None:
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("stop", stop))
-    dispatcher.add_handler(CommandHandler("help", start))
+    dispatcher.add_handler(CommandHandler("help", helpme))
     dispatcher.add_handler(CommandHandler("list", show_battles))
 
     updater.start_polling()
