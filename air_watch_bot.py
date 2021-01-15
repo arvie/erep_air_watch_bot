@@ -78,6 +78,8 @@ def create_message(b, c):
 
 def is_same(b1, b2):
     w1, w2 = get_wall(b1), get_wall(b2)
+    if w2['dom'] == 50.0 and w1['dom'] > 50:
+        return False
     if w1['dom'] != w2['dom'] and w1['for'] != w2['for']:
         return False
     if inv_co(b1) != inv_co(b2):
@@ -128,8 +130,10 @@ def show_battles(update: Update, context: CallbackContext) -> None:
     battles, countries = load_battles()
     monitor = chats.get(chat_id)
     if not monitor:
+        update.message.reply_text('Try /start first...')
         return
 
+    has_sent = False
     for b in battles:
         bname = f"{b['id']}-{b['zone_id']}"
         if monitor.get(bname):
@@ -139,6 +143,9 @@ def show_battles(update: Update, context: CallbackContext) -> None:
                 parse_mode="HTML",
                 disable_web_page_preview=True
             )
+            has_sent = True
+    if not has_sent:
+        update.message.reply_text('No battles.')
 
 
 def main() -> None:
