@@ -4,10 +4,10 @@ import requests
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
-TELEGRAM_TOKEN   = "{!PUT TELEGRAM BOT TOKEN HERE!}"
-WATCH_COUNTRY    = "Russia"
+TELEGRAM_TOKEN = "{!PUT TELEGRAM BOT TOKEN HERE!}"
+WATCH_COUNTRY = "Russia"
 EREP_BATTLES_URL = "https://www.erepublik.com/en/military/campaignsJson/list"
-EREP_BATTLE_URL  = "https://www.erepublik.com/en/military/battlefield/"
+EREP_BATTLE_URL = "https://www.erepublik.com/en/military/battlefield/"
 
 # Enable logging
 logging.basicConfig(
@@ -24,9 +24,10 @@ def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Hi!')
     chat_id = update.message.chat_id
     if chat_id not in chats.keys():
-        context.job_queue.run_once(alarm, 10, context=chat_id, name=str(chat_id))
+        context.job_queue.run_once(
+            alarm, 10, context=chat_id, name=str(chat_id))
         chats[chat_id] = {}
-        
+
 
 def stop(update: Update, context: CallbackContext) -> None:
     global chats
@@ -41,12 +42,19 @@ def stop(update: Update, context: CallbackContext) -> None:
 
 
 def helpme(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hi! /start, /stop, /help and /list are supported. Try it...')
+    update.message.reply_text(
+        'Hi! /start, /stop, /help and /list are supported. Try it...')
 
 
-get_wall = lambda b: list(b['div'].values())[0]['wall']
-inv_co   = lambda b: max([0]+[i['reward'] for i in list(b['div'].values())[0]['co']['inv']])//1000
-def_co   = lambda b: max([0]+[i['reward'] for i in list(b['div'].values())[0]['co']['def']])//1000
+def get_wall(b): return list(b['div'].values())[0]['wall']
+
+
+def inv_co(b): return max([0] + [i['reward']
+                                 for i in list(b['div'].values())[0]['co']['inv']]) // 1000
+
+
+def def_co(b): return max([0] + [i['reward']
+                                 for i in list(b['div'].values())[0]['co']['def']]) // 1000
 
 
 def wall(b):
@@ -71,9 +79,9 @@ def create_message(b, c):
 def is_same(b1, b2):
     w1, w2 = get_wall(b1), get_wall(b2)
     if w1['dom'] != w2['dom'] and w1['for'] != w2['for']:
-         return False
+        return False
     if inv_co(b1) != inv_co(b2):
-         return False
+        return False
     return def_co(b1) == def_co(b2)
 
 
@@ -81,9 +89,11 @@ def load_battles():
     response = requests.get(EREP_BATTLES_URL).json()
     battles = response['battles']
     countries = response['countries']
-    country = next((v['id'] for k, v in countries.items() if v['name'] == WATCH_COUNTRY))
+    country = next((v['id'] for k, v in countries.items()
+                    if v['name'] == WATCH_COUNTRY))
     countries = dict([(v['id'], v['name']) for k, v in countries.items()])
-    battles = [b for i, b in battles.items() if b['type'] == 'aircraft' and country == b['inv']['id']]
+    battles = [b for i, b in battles.items() if b['type'] ==
+               'aircraft' and country == b['inv']['id']]
 
     return battles, countries
 
@@ -92,7 +102,8 @@ def alarm(context) -> None:
     global chats
     job = context.job
     chat_id = job.context
-    if chat_id not in chats.keys(): return
+    if chat_id not in chats.keys():
+        return
 
     monitor = chats[chat_id]
     context.job_queue.run_once(alarm, 60, context=chat_id, name=str(chat_id))
@@ -101,13 +112,14 @@ def alarm(context) -> None:
 
     for b in battles:
         bname = f"{b['id']}-{b['zone_id']}"
-        if not bname in monitor.keys() or not is_same(b, monitor[bname]):
+        if bname not in monitor.keys() or not is_same(b, monitor[bname]):
             monitor[bname] = b
             context.bot.send_message(
                 chat_id,
                 text=create_message(b, countries),
                 parse_mode="HTML",
-                disable_web_page_preview=True)
+                disable_web_page_preview=True
+            )
 
 
 def show_battles(update: Update, context: CallbackContext) -> None:
@@ -115,7 +127,8 @@ def show_battles(update: Update, context: CallbackContext) -> None:
     chat_id = update.message.chat_id
     battles, countries = load_battles()
     monitor = chats.get(chat_id)
-    if not monitor: return
+    if not monitor:
+        return
 
     for b in battles:
         bname = f"{b['id']}-{b['zone_id']}"
@@ -124,7 +137,8 @@ def show_battles(update: Update, context: CallbackContext) -> None:
                 chat_id,
                 text=create_message(b, countries),
                 parse_mode="HTML",
-                disable_web_page_preview=True)
+                disable_web_page_preview=True
+            )
 
 
 def main() -> None:
