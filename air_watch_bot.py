@@ -114,7 +114,8 @@ def show_battles(update: Update, context: CallbackContext) -> None:
     global chats
     chat_id = update.message.chat_id
     battles, countries = load_battles()
-    monitor = chats[chat_id]
+    monitor = chats.get(chat_id)
+    if not monitor: return
 
     for b in battles:
         bname = f"{b['id']}-{b['zone_id']}"
