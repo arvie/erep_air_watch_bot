@@ -3,6 +3,7 @@ import requests
 
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
+from datetime import datetime
 
 TELEGRAM_TOKEN = "{!PUT TELEGRAM BOT TOKEN HERE!}"
 WATCH_COUNTRY = "Russia"
@@ -26,7 +27,7 @@ def start(update: Update, context: CallbackContext) -> None:
     if chat_id not in chats.keys():
         context.job_queue.run_once(
             alarm, 10, context=chat_id, name=str(chat_id))
-        chats[chat_id] = {}
+        chats[chat_id] = set()
 
 
 def stop(update: Update, context: CallbackContext) -> None:
@@ -64,27 +65,21 @@ def wall(b):
     return f"{larrow} {int(w['dom'])}% {rarrow}"
 
 
+def battle_time(b):
+    return int((datetime.utcnow() - datetime.utcfromtimestamp(int(b['start']))).total_seconds() // 60)
+
+
 def create_message(b, c):
+    t = battle_time(b)
     co_inv, co_def = inv_co(b), def_co(b)
     co_inv = f", {co_inv}k" if co_inv > 0 else ""
     co_def = f", {co_def}k" if co_def > 0 else ""
     erep_url = f"{EREP_BATTLE_URL}{b['id']}"
-    b_id = f"{b['id']}-{b['zone_id']}"
+    b_id = f"{b['id']}-R{b['zone_id']}"
     country_inv = c[b['inv']['id']]
     country_def = c[b['def']['id']]
     return f"{country_inv} ({b['inv']['points']}{co_inv}) {wall(b)} {country_def} ({b['def']['points']}{co_def})\n" +\
-        f"<a href='{erep_url}'>{b_id}: {b['region']['name']}/{b['city']['name']}</a>"
-
-
-def is_same(b1, b2):
-    w1, w2 = get_wall(b1), get_wall(b2)
-    if w2['dom'] == 50.0 and w1['dom'] > 50:
-        return False
-    if w1['dom'] != w2['dom'] and w1['for'] != w2['for']:
-        return False
-    if inv_co(b1) != inv_co(b2):
-        return False
-    return def_co(b1) == def_co(b2)
+        f"<a href='{erep_url}'>{b_id}-T{t}: {b['region']['name']}/{b['city']['name']}</a>"
 
 
 def load_battles():
@@ -95,7 +90,7 @@ def load_battles():
                     if v['name'] == WATCH_COUNTRY))
     countries = dict([(v['id'], v['name']) for k, v in countries.items()])
     battles = [b for i, b in battles.items() if b['type'] ==
-               'aircraft' and country == b['inv']['id']]
+               'aircraft'] and country == b['inv']['id']]
 
     return battles, countries
 
@@ -113,9 +108,16 @@ def alarm(context) -> None:
     battles, countries = load_battles()
 
     for b in battles:
-        bname = f"{b['id']}-{b['zone_id']}"
-        if bname not in monitor.keys() or not is_same(b, monitor[bname]):
-            monitor[bname] = b
+        w = get_wall(b)
+        if w['for'] == b['def']['id']:
+            continue
+        t = battle_time(b)
+        if t < 30:
+            continue
+        t = 30 * (t // 30)
+        bname = f"{b['id']}-R{b['zone_id']}-T{t}"
+        if bname not in monitor:
+            monitor.add(bname)
             context.bot.send_message(
                 chat_id,
                 text=create_message(b, countries),
@@ -133,18 +135,9 @@ def show_battles(update: Update, context: CallbackContext) -> None:
         update.message.reply_text('Try /start first...')
         return
 
-    has_sent = False
-    for b in battles:
-        bname = f"{b['id']}-{b['zone_id']}"
-        if monitor.get(bname):
-            context.bot.send_message(
-                chat_id,
-                text=create_message(b, countries),
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
-            has_sent = True
-    if not has_sent:
+    if monitor:
+        update.message.reply_text(str(monitor))
+    else:
         update.message.reply_text('No battles.')
 
 
