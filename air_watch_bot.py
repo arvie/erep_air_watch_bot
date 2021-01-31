@@ -89,8 +89,8 @@ def load_battles():
     country = next((v['id'] for k, v in countries.items()
                     if v['name'] == WATCH_COUNTRY))
     countries = dict([(v['id'], v['name']) for k, v in countries.items()])
-    battles = [b for i, b in battles.items() if b['type'] ==
-               'aircraft'] and country == b['inv']['id']]
+    battles = [b for b in battles.values() if b['type'] ==
+               'aircraft' and country == b['inv']['id']]
 
     return battles, countries
 
@@ -106,8 +106,9 @@ def alarm(context) -> None:
     context.job_queue.run_once(alarm, 60, context=chat_id, name=str(chat_id))
 
     battles, countries = load_battles()
-
+    ids = set()
     for b in battles:
+        ids.add(str(b['id']))
         w = get_wall(b)
         if w['for'] == b['def']['id']:
             continue
@@ -124,6 +125,8 @@ def alarm(context) -> None:
                 parse_mode="HTML",
                 disable_web_page_preview=True
             )
+    for b in [i for i in monitor if i.split('-')[0] not in ids]:
+        monitor.remove(b)
 
 
 def show_battles(update: Update, context: CallbackContext) -> None:
